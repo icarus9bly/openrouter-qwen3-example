@@ -4,23 +4,98 @@
 
 Infisical is a secrets management platform used in this project to securely store and retrieve the OpenRouter API key. This guide covers setup, configuration, and best practices.
 
+The application supports three credential loading methods:
+
+1. **Direct .env file** (simplest, for development)
+2. **.env file + Infisical fallback** (recommended, flexible)
+3. **Keyring + Infisical** (most secure for production)
+
 ## Architecture
 
 ### Data Flow
 
-1. **Local Keyring** - Stores Infisical authentication credentials (client_id, client_secret, project_id)
-2. **Infisical API** - Authenticates and provides secure secret retrieval
-3. **Script** - Uses secrets to authenticate with OpenRouter
+The credential loading follows this priority order:
 
+```
+1. Check .env file for OPENROUTER_API_KEY
+   ├─→ Found? Use it and done!
+   └─→ Not found? Continue to step 2
+
+2. Check .env file for Infisical credentials (INFISICAL_CLIENT_ID, etc.)
+   ├─→ Found? Use them to authenticate with Infisical
+   └─→ Not found? Continue to step 3
+
+3. Check system keyring for Infisical credentials
+   ├─→ Found? Use them to authenticate with Infisical
+   └─→ Not found? Raise error with helpful instructions
+```
+
+Graph view:
 ```
 Script startup
-    ├── Load Infisical credentials from system keyring
-    ├── Authenticate with Infisical using Universal Auth
-    ├── Retrieve secrets from Infisical project/environment
-    └── Use secrets for API calls
+    ├── Load .env file (python-dotenv)
+    ├── Check OPENROUTER_API_KEY
+    │   ├─→ Found in .env? Done!
+    │   └─→ Not found? Continue...
+    ├── Check INFISICAL_* credentials in .env
+    │   ├─→ Found? Use them
+    │   └─→ Not found? Check keyring
+    ├── Try keyring for Infisical credentials
+    │   ├─→ Found? Use them
+    │   └─→ Not found? Raise error
+    └── Use Infisical credentials to:
+        ├── Authenticate with Infisical API
+        └── Retrieve OPENROUTER_API_KEY from Infisical
 ```
 
-## Setup Steps
+## Setup Options
+
+### Option 1: Simple .env Setup (Recommended for Development)
+
+For development, you can simply add your OpenRouter API key to a `.env` file:
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and add your OpenRouter API key:
+   ```
+   OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
+   ```
+
+3. Run the app - it will read from `.env` automatically:
+   ```bash
+   python app.py
+   ```
+
+That's it! No Infisical setup needed for development.
+
+### Option 2: .env + Infisical Fallback (Recommended for Production)
+
+Set up Infisical for production while keeping .env as fallback:
+
+1. **Local Development**: Use `.env` with `OPENROUTER_API_KEY` directly
+2. **Production**: Use Infisical credentials in `.env` or keyring
+
+Edit `.env`:
+```
+# Leave this empty for production (will use Infisical)
+# OPENROUTER_API_KEY=
+
+# Add Infisical credentials instead
+INFISICAL_CLIENT_ID=your-client-id
+INFISICAL_CLIENT_SECRET=your-client-secret
+INFISICAL_PROJECT_ID=your-project-id
+```
+
+### Option 3: Keyring + Infisical (Most Secure)
+
+For maximum security, don't put credentials in `.env` at all. Store them only in system keyring.
+
+## Setup Steps for Infisical
+
+**Note:** Only follow these steps if you're using Infisical (Option 2 or 3). For simple development with Option 1, using `.env.example` is sufficient.
 
 ### Step 1: Create Infisical Account and Project
 
