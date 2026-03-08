@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen3 Chat Interface</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>Qwen3 Chat</h1>
+            <p>Powered by OpenRouter</p>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message welcome">
+                <div class="message-content">
+                    <p>👋 Welcome! I'm Qwen3, an advanced AI assistant. Ask me anything!</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-area">
+            <form id="chatForm">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="userInput" 
+                        placeholder="Type your message here..." 
+                        autocomplete="off"
+                    >
+                    <button type="submit" id="sendButton" class="send-button">
+                        <span class="button-text">Send</span>
+                        <span class="spinner hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

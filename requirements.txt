@@ -1,10 +1,13 @@
 # OpenRouter Playground - Python Dependencies
 
+# Web framework for Flask server
+Flask==3.0.0
+
 # HTTP library for API requests
 requests==2.31.0
 
 # SDK for Infisical secrets management
-infisical-sdk==3.5.0
+infisical-python
 
 # Python keyring library for secure credential storage
 keyring==24.3.1
