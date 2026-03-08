@@ -65,7 +65,15 @@ function addMessage(text, role) {
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    contentDiv.textContent = text;
+    
+    // For assistant messages, render markdown; for user messages, use plain text
+    if (role === 'assistant') {
+        const htmlContent = marked.parse(text);
+        const cleanHtml = DOMPurify.sanitize(htmlContent);
+        contentDiv.innerHTML = cleanHtml;
+    } else {
+        contentDiv.textContent = text;
+    }
     
     messageDiv.appendChild(contentDiv);
     chatMessages.appendChild(messageDiv);
