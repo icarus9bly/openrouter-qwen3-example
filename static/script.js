@@ -8,6 +8,9 @@ const spinner = sendButton.querySelector('.spinner');
 // Focus on input when page loads
 userInput.focus();
 
+// Create a reference to the current message element being streamed
+let currentMessageElement = null;
+
 // Handle form submission
 chatForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -27,9 +30,12 @@ chatForm.addEventListener('submit', async (e) => {
     // Clear input
     userInput.value = '';
     
+    // Create a new message element for streaming response
+    currentMessageElement = createStreamingMessageElement('assistant');
+    
     try {
-        // Send message to backend
-        const response = await fetch('/api/chat', {
+        // Send message to backend with streaming
+        const response = await fetch('/api/chat-stream', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -37,18 +43,22 @@ chatForm.addEventListener('submit', async (e) => {
             body: JSON.stringify({ message: message })
         });
         
-        const data = await response.json();
-        
-        if (data.success) {
-            // Add assistant response to chat
-            addMessage(data.response, 'assistant');
+        if (!response.ok) {
+            const errorData = await response.json();
+            addMessage('Error: ' + (errorData.error || 'Failed to get response'), 'error');
+            currentMessageElement.remove();
+            currentMessageElement = null;
         } else {
-            // Add error message
-            addMessage('Error: ' + (data.error || 'Failed to get response'), 'error');
+            // Handle streaming response
+            await handleStreamingResponse(response);
         }
     } catch (error) {
         // Add error message
         addMessage('Error: ' + error.message, 'error');
+        if (currentMessageElement) {
+            currentMessageElement.remove();
+            currentMessageElement = null;
+        }
     } finally {
         // Re-enable input and send button
         userInput.disabled = false;
@@ -56,8 +66,100 @@ chatForm.addEventListener('submit', async (e) => {
         buttonText.classList.remove('hidden');
         spinner.classList.add('hidden');
         userInput.focus();
+        currentMessageElement = null;
     }
 });
+
+async function handleStreamingResponse(response) {
+    // Parse and handle server-sent events streaming response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            
+            // Keep the last incomplete line in the buffer
+            buffer = lines[lines.length - 1];
+            
+            // Process complete lines
+            for (let i = 0; i < lines.length - 1; i++) {
+                const line = lines[i];
+                
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        
+                        if (data.error) {
+                            addMessage('Error: ' + data.error, 'error');
+                            if (currentMessageElement) {
+                                currentMessageElement.remove();
+                                currentMessageElement = null;
+                            }
+                        } else if (data.done) {
+                            // Stream finished, rendering is complete
+                            if (currentMessageElement) {
+                                renderMarkdown(currentMessageElement.querySelector('.message-content'));
+                            }
+                        } else if (data.content) {
+                            // Add content chunk to current message
+                            if (currentMessageElement) {
+                                const contentDiv = currentMessageElement.querySelector('.message-content');
+                                contentDiv.textContent += data.content;
+                                
+                                // Auto-scroll
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse SSE data:', e);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Streaming error:', error);
+        addMessage('Error: Connection interrupted', 'error');
+        if (currentMessageElement) {
+            currentMessageElement.remove();
+            currentMessageElement = null;
+        }
+    }
+}
+
+function createStreamingMessageElement(role) {
+    // Create a new message element for streaming content
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = '';
+    
+    messageDiv.appendChild(contentDiv);
+    chatMessages.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    return messageDiv;
+}
+
+function renderMarkdown(element) {
+    // Render markdown in an element after streaming is complete
+    if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+        const text = element.textContent;
+        const htmlContent = marked.parse(text);
+        const cleanHtml = DOMPurify.sanitize(htmlContent);
+        element.innerHTML = cleanHtml;
+    }
+}
 
 function addMessage(text, role) {
     const messageDiv = document.createElement('div');
