@@ -1,0 +1,14 @@
+# OpenRouter Playground - Python Dependencies
+
+# HTTP library for API requests
+requests==2.31.0
+
+# SDK for Infisical secrets management
+infisical-sdk==3.5.0
+
+# Python keyring library for secure credential storage
+keyring==24.3.1
+
+# Optional: For better credential backend support
+# keyrings.cryptfile==1.3.9  # For encrypted file-based credential storage
+# python-gnupg==0.4.9        # For GPG-based credential encryption
