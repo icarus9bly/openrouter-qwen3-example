@@ -1,6 +1,6 @@
-# OpenRouter Playground
+# OpenRouter Qwen3 Integration Example
 
-A Python script that demonstrates how to use the OpenRouter Completions API with the Qwen3 v1 model, with secure API key management through Infisical.
+A production-ready Python example demonstrating OpenRouter API integration with the Qwen3 v1 model, featuring secure credential management through Infisical SDK and local keyring storage.
 
 ## Overview
 

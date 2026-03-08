@@ -1,6 +1,6 @@
 # Quick Start Guide - Local Development
 
-Get the OpenRouter playground running locally in minutes.
+Get the OpenRouter Qwen3 Integration Example running locally in minutes.
 
 ## Prerequisites
 
