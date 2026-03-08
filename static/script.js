@@ -5,6 +5,10 @@ const sendButton = document.getElementById('sendButton');
 const buttonText = sendButton.querySelector('.button-text');
 const spinner = sendButton.querySelector('.spinner');
 
+// Track streaming state for debouncing
+let streamingDebounceTimer = null;
+const STREAMING_RENDER_INTERVAL = 100; // Update markdown every 100ms during streaming
+
 // Focus on input when page loads
 userInput.focus();
 
@@ -103,8 +107,9 @@ async function handleStreamingResponse(response) {
                                 currentMessageElement = null;
                             }
                         } else if (data.done) {
-                            // Stream finished, rendering is complete
+                            // Stream finished, final render
                             if (currentMessageElement) {
+                                currentMessageElement.classList.remove('streaming');
                                 renderMarkdown(currentMessageElement.querySelector('.message-content'));
                             }
                         } else if (data.content) {
@@ -112,6 +117,12 @@ async function handleStreamingResponse(response) {
                             if (currentMessageElement) {
                                 const contentDiv = currentMessageElement.querySelector('.message-content');
                                 contentDiv.textContent += data.content;
+                                
+                                // Debounce markdown rendering during streaming
+                                clearTimeout(streamingDebounceTimer);
+                                streamingDebounceTimer = setTimeout(() => {
+                                    renderMarkdown(contentDiv);
+                                }, STREAMING_RENDER_INTERVAL);
                                 
                                 // Auto-scroll
                                 chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -136,7 +147,7 @@ async function handleStreamingResponse(response) {
 function createStreamingMessageElement(role) {
     // Create a new message element for streaming content
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}`;
+    messageDiv.className = `message ${role} streaming`;
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
@@ -152,12 +163,28 @@ function createStreamingMessageElement(role) {
 }
 
 function renderMarkdown(element) {
-    // Render markdown in an element after streaming is complete
+    // Render markdown in an element after streaming
+    // Handles both complete and partial content gracefully
     if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
         const text = element.textContent;
-        const htmlContent = marked.parse(text);
-        const cleanHtml = DOMPurify.sanitize(htmlContent);
-        element.innerHTML = cleanHtml;
+        
+        // Skip rendering if text is too short
+        if (text.length < 2) {
+            return;
+        }
+        
+        try {
+            const htmlContent = marked.parse(text);
+            const cleanHtml = DOMPurify.sanitize(htmlContent);
+            
+            // Only update if content has changed to reduce flickering
+            if (element.innerHTML !== cleanHtml) {
+                element.innerHTML = cleanHtml;
+            }
+        } catch (e) {
+            // If markdown parsing fails, keep the raw text
+            console.warn('Markdown rendering error:', e);
+        }
     }
 }
 
